@@ -28,6 +28,16 @@ jobs:
           test -x "$SDKMANAGER"
           yes | "$SDKMANAGER" --licenses >/dev/null || true
           "$SDKMANAGER" 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Bundle offline VDSR neural model (MIT)
+        run: |
+          mkdir -p app/src/main/assets
+          curl -fL --retry 3 --max-time 180 'https://huggingface.co/litert-community/VDSR/resolve/main/vdsr_256_fp16.tflite' -o app/src/main/assets/vdsr_256_fp16.tflite
+          python3 - <<'PY'
+          from pathlib import Path
+          data=Path('app/src/main/assets/vdsr_256_fp16.tflite').read_bytes()
+          assert len(data)>1000000 and data[4:8]==b'TFL3', 'Unexpected VDSR model bytes'
+          print('VDSR model validated:',len(data),'bytes')
+          PY
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
