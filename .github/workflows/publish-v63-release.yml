@@ -1,0 +1,28 @@
+name: Publish WiggleFlow 6.3 APK
+on:
+  push:
+    paths:
+      - '.github/workflows/publish-v63-release.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Fetch successful WiggleFlow 6.3 build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p dist
+          gh run download 41656300654 --repo "$GITHUB_REPOSITORY" -n WiggleFlow-2-debug-apk -D dist
+          test -s dist/app-debug.apk
+          mv dist/app-debug.apk dist/WiggleFlow-6.3-BodyMotion-AI.apk
+          ls -lh dist/WiggleFlow-6.3-BodyMotion-AI.apk
+      - name: Publish stable release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create v6.3 dist/WiggleFlow-6.3-BodyMotion-AI.apk --repo "$GITHUB_REPOSITORY" --title "WiggleFlow 6.3 — Body Motion AI" --notes "Fixes wallpaper motion leaking outside selections and highlight shimmer outside masks; 4-axis directional strength sliders; improved touch radius; ML Kit body-pose area masks; optional Anime AI ISNet ONNX model download (about 176 MB, Apache-2.0) to the private .ai_models folder; art colour-region touch selection. Neural body-part masks are approximate, anime model segments character vs background only. Install over v6.2 where signatures permit." --latest
