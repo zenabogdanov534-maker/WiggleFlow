@@ -48,6 +48,9 @@ jobs:
             adb logcat -c
             adb shell am start -W -n com.wiggleflow.wallpaper/.SettingsActivity
             sleep 6
+            mkdir -p smoke
+            adb shell screencap -p /sdcard/wiggle_studio.png
+            adb pull /sdcard/wiggle_studio.png smoke/studio.png
             adb logcat -d -s AndroidRuntime:E > /tmp/launch-crash.log
             cat /tmp/launch-crash.log
             if grep -q 'FATAL EXCEPTION' /tmp/launch-crash.log; then echo 'APP_CRASHED'; exit 1; fi
@@ -57,5 +60,7 @@ jobs:
         if: always()
         with:
           name: Android-smoke-logs
-          path: /tmp/launch-crash.log
+          path: |
+            /tmp/launch-crash.log
+            smoke/studio.png
           if-no-files-found: ignore
