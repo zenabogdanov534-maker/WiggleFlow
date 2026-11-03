@@ -1,0 +1,32 @@
+name: Publish WiggleFlow 6.5 Body Motion Fix
+on:
+  push:
+    paths:
+      - '.github/workflows/publish-v65-release.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download validated build artifact
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p output
+          gh run download 41660321017 --repo "$GITHUB_REPOSITORY" --name WiggleFlow-2-debug-apk --dir output
+          test -s output/app-debug.apk
+          mv output/app-debug.apk output/WiggleFlow-6.5-BodyMotion-Fix.apk
+          unzip -t output/WiggleFlow-6.5-BodyMotion-Fix.apk >/dev/null
+          ls -lh output/WiggleFlow-6.5-BodyMotion-Fix.apk
+      - name: Publish direct download
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create v6.5 output/WiggleFlow-6.5-BodyMotion-Fix.apk --repo "$GITHUB_REPOSITORY" \
+            --title 'WiggleFlow 6.5 — Body Motion Fix' \
+            --notes 'Body-part motion hotfix: pre-masked movable transparent sprite instead of clipping deformed full-image to a stationary mask; mesh fold protection; less overlapping touch impulse; better thin-part mask sampling and lower rendering overhead. All prior AI, GIF, angle, and OS-profile features retained. Debug-signed APK. Back up your masks before upgrading. OEM lock-screen touch limitations still apply.' \
+            --latest
