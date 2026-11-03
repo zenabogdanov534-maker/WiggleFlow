@@ -1,0 +1,29 @@
+name: Publish WiggleFlow 6.6 Clothes Only
+on:
+  push:
+    paths:
+      - '.github/workflows/publish-v66-release.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download successful build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p output
+          gh run download 41665018770 --repo "$GITHUB_REPOSITORY" --name WiggleFlow-2-debug-apk --dir output
+          test -s output/app-debug.apk
+          mv output/app-debug.apk output/WiggleFlow-6.6-Clothing-Switch.apk
+          unzip -t output/WiggleFlow-6.6-Clothing-Switch.apk | tail -n 1
+          ls -lh output/WiggleFlow-6.6-Clothing-Switch.apk
+      - name: Publish durable direct APK download
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create v6.6 output/WiggleFlow-6.6-Clothing-Switch.apk --repo "$GITHUB_REPOSITORY" --title 'WiggleFlow 6.6 — Clothing Only Switch' --notes 'New normal switch in Area and Effects: Двигать только одежду. Clothing-only semantic mask created automatically by optional first-use SCHP ATR model download (approximately 66 MB; internet required once). Existing manually drawn mask is preserved and restored when switched off. Human clothes parsing works best with photographs; anime/art and GIFs may have imperfect edges, and GIF uses first frame. Experimental on-device neural feature. Debug-signed Android APK. Android launcher/lockscreen may limit touch callbacks. Back up projects before reinstalling.' --latest
