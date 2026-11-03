@@ -1,0 +1,28 @@
+name: Publish WiggleFlow 4.2 APK release
+on:
+  push:
+    paths:
+      - '.github/workflows/publish-apk-release.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download verified build APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p output
+          gh run download 41642246099 --repo "$GITHUB_REPOSITORY" -n WiggleFlow-2-debug-apk -D output
+          test -s output/app-debug.apk
+          mv output/app-debug.apk output/WiggleFlow-4.2.apk
+          ls -lh output/WiggleFlow-4.2.apk
+      - name: Publish stable direct APK download
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create v4.2 output/WiggleFlow-4.2.apk --repo "$GITHUB_REPOSITORY" --title 'WiggleFlow 4.2 (Smooth Scroll)' --notes 'WiggleFlow 4.2 APK, built with GitHub Actions. Install on Android 8 or later. Unofficial OriginOS-style wallpaper app.' --latest
