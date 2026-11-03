@@ -1,0 +1,31 @@
+name: Publish WiggleFlow 6.0 APK
+on:
+  push:
+    paths:
+      - '.github/workflows/publish-v6-release.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download verified WiggleFlow 6.0 build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p output
+          gh run download 41647157995 --repo "$GITHUB_REPOSITORY" --name WiggleFlow-2-debug-apk --dir output
+          test -s output/app-debug.apk
+          mv output/app-debug.apk output/WiggleFlow-6.0.apk
+          ls -lh output/WiggleFlow-6.0.apk
+      - name: Publish persistent APK link
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create v6.0 output/WiggleFlow-6.0.apk --repo "$GITHUB_REPOSITORY" \
+            --title 'WiggleFlow 6.0 - AI & Motion Studio' \
+            --notes 'New: directional motion controls and amplitude, strict background lock, on-device ML Kit person masks, artwork mask fallback, photo and GIF per-frame enhancement, original restoration, physics stabilization. Debug APK. Back up data before upgrades; launcher/lockscreen touch support varies by OEM.' \
+            --latest
