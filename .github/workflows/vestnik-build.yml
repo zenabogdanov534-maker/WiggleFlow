@@ -17,10 +17,18 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Install SDK 35
+      - name: Prepare Android SDK 35
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          SDK_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="$(find "$SDK_HOME" -name sdkmanager -type f 2>/dev/null | head -n 1)"
+          if [ -n "$SDKMANAGER" ]; then
+            yes | "$SDKMANAGER" --licenses > /dev/null || true
+            "$SDKMANAGER" "platforms;android-35" "build-tools;35.0.0"
+          else
+            echo "sdkmanager unavailable; using preinstalled SDK platforms"
+            ls -la "$SDK_HOME/platforms" || true
+          fi
       - name: Set up Gradle 8.11.1
         uses: gradle/actions/setup-gradle@v4
         with:
