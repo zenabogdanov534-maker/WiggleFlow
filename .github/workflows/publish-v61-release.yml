@@ -1,0 +1,38 @@
+name: Publish WiggleFlow 6.1 release
+on:
+  push:
+    paths:
+      - '.github/workflows/publish-v61-release.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download APK from successful neural build
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p output
+          gh run download 41649936375 --repo "$GITHUB_REPOSITORY" --name WiggleFlow-2-debug-apk --dir output
+          test -s output/app-debug.apk
+          mv output/app-debug.apk output/WiggleFlow-6.1-AI.apk
+          unzip -p output/WiggleFlow-6.1-AI.apk assets/vdsr_256_fp16.tflite > /tmp/vdsr.tflite
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('/tmp/vdsr.tflite')
+          b=p.read_bytes()
+          assert len(b)>1_000_000 and b[4:8]==b'TFL3', 'VDSR model missing'
+          print('Verified embedded VDSR model:',len(b),'bytes')
+          PY
+      - name: Publish persistent direct APK URL
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create v6.1 output/WiggleFlow-6.1-AI.apk --repo "$GITHUB_REPOSITORY" \
+            --title 'WiggleFlow 6.1 — Angle & Neural Studio' \
+            --notes 'New: precise 0–359 degree motion angle; semi-transparent OS theme label with triple-tap chooser; offline VDSR enhancement for photos and short GIFs; original restore; all existing movement masks and device profiles. Built with ML Kit and TensorFlow Lite. Experimental neural feature: processing can be slow and may vary by device. This is a debug-signed APK. Back up your projects before replacing old versions; OEM lock-screen behavior varies.' \
+            --latest
