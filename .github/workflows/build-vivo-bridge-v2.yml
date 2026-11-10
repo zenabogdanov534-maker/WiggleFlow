@@ -1,0 +1,75 @@
+name: Build Vivo ColorOS Bridge v2
+on:
+  push:
+    branches: [vivo-coloros-bridge-v2]
+  workflow_dispatch:
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Setup SDK
+        run: |
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+      - name: Prepare project
+        run: |
+          mkdir -p v2
+          base64 --decode vivo-themes-oneplus-project.zip.b64 > /tmp/old-project.zip
+          unzip -qo /tmp/old-project.zip -d v2
+          cp vivo-port-upgrade/*.java v2/app/src/main/java/io/oneplus/vivothemes/
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path("v2/app/src/main")
+          java=root/"java/io/oneplus/vivothemes/MainActivity.java"
+          code=java.read_text()
+          marker='        section("Экран блокировки и AOD","Переход к штатным настройкам телефона");'
+          assert marker in code, "MainActivity insertion point not found"
+          extra='''        section("Origin-style студия", "Новый редактор AOD и анимированные обои");
+          marginAdd(root,action("Создать свой AOD с картинкой и часами",()->startActivity(new Intent(this,AodStudioActivity.class))),14);
+          marginAdd(root,action("Живые обои и импорт тем .itz",()->startActivity(new Intent(this,ThemeExtrasActivity.class))),11);
+          '''
+          code=code.replace(marker,extra+marker)
+          java.write_text(code)
+          manifest=root/"AndroidManifest.xml"
+          txt=manifest.read_text()
+          services='''        <activity android:name=".AodStudioActivity" android:exported="false" />
+                  <activity android:name=".ThemeExtrasActivity" android:exported="false" />
+                  <service android:name=".ColorosLiveWallpaper" android:label="Origin-style Live Wallpapers"
+                      android:exported="true" android:permission="android.permission.BIND_WALLPAPER">
+                      <intent-filter><action android:name="android.service.wallpaper.WallpaperService" /></intent-filter>
+                      <meta-data android:name="android.service.wallpaper" android:resource="@xml/wallpaper" />
+                  </service>
+                  <service android:name=".AodDreamService" android:label="Origin-style AOD Screen Saver"
+                      android:exported="true" android:permission="android.permission.BIND_DREAM_SERVICE">
+                      <intent-filter><action android:name="android.service.dreams.DreamService" /></intent-filter>
+                      <meta-data android:name="android.service.dream" android:resource="@xml/dream" />
+                  </service>
+          '''
+          txt=txt.replace('    </application>',services+'    </application>')
+          manifest.write_text(txt)
+          xml=root/"res/xml";xml.mkdir(parents=True,exist_ok=True)
+          (xml/"wallpaper.xml").write_text('<wallpaper xmlns:android="http://schemas.android.com/apk/res/android" />')
+          (xml/"dream.xml").write_text('<dream xmlns:android="http://schemas.android.com/apk/res/android" />')
+          build=Path("v2/app/build.gradle")
+          s=build.read_text().replace("versionCode 3","versionCode 4").replace("'1.0.3'","'2.0.0'")
+          build.write_text(s)
+          PY
+      - name: Compile Android APK
+        working-directory: v2
+        run: gradle :app:assembleDebug --no-daemon --stacktrace
+      - name: Upload APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: OriginStyle-ColorOS17-OnePlus15-v2-APK
+          path: v2/app/build/outputs/apk/debug/app-debug.apk
