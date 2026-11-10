@@ -2,6 +2,8 @@ name: Build Vivo Themes OnePlus
 on:
   push:
     branches: [vivo-themes-oneplus-rewrite]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 jobs:
   build:
