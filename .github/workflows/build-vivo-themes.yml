@@ -1,0 +1,43 @@
+name: Build Vivo Themes OnePlus
+on:
+  push:
+    branches: [vivo-themes-oneplus-rewrite]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Verify Android SDK
+        shell: bash
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls -ld "$ANDROID_HOME/platforms/android-35" || true
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+      - name: Extract rewritten Android project
+        run: |
+          mkdir -p vivo-themes-source
+          base64 --decode vivo-themes-oneplus-project.zip.b64 > /tmp/vivo.zip
+          unzip -q -o /tmp/vivo.zip -d vivo-themes-source
+          unzip -t /tmp/vivo.zip
+      - name: Build APK
+        working-directory: vivo-themes-source
+        run: gradle :app:assembleDebug --stacktrace --no-daemon
+      - name: Upload APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: VivoThemes-OnePlus15-APK
+          path: vivo-themes-source/app/build/outputs/apk/debug/app-debug.apk
